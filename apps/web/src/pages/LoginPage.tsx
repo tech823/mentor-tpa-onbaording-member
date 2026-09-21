@@ -44,17 +44,19 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="relative hidden overflow-hidden bg-navy-gradient p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden bg-brand-gradient p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="absolute -end-16 -top-16 h-72 w-72 rounded-full bg-white/10" />
         <div className="absolute -bottom-24 -start-10 h-80 w-80 rounded-full bg-white/5" />
         <div className="relative">
           <img src="/logo-white.png" alt="Mentor TPA" className="h-9 w-auto" />
         </div>
         <div className="relative">
-          <span className="section-label mb-4">Corporate Onboarding, Digitized</span>
+          <span className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-white/75">
+            <span className="h-0.5 w-6 rounded bg-white/60" /> Corporate Onboarding, Digitized
+          </span>
           <h1 className="text-4xl font-bold leading-tight">
             Member onboarding,{" "}
-            <span style={{ color: "hsl(216 100% 66%)" }}>done right.</span>
+            <span style={{ color: "hsl(190 100% 78%)" }}>done right.</span>
           </h1>
           <p className="mt-3 max-w-md text-white/75">
             Configurable, secure, multilingual onboarding for your corporate health-coverage programmes.

@@ -101,7 +101,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-4">
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-navy-gradient p-5 text-white card-shadow-lg md:p-6">
+      <div className="relative overflow-hidden rounded-2xl bg-brand-gradient p-5 text-white card-shadow-lg md:p-6">
         <div className="absolute -end-8 -top-10 h-40 w-40 rounded-full bg-white/10" />
         <div className="absolute -bottom-14 end-24 h-32 w-32 rounded-full bg-primary/20" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">

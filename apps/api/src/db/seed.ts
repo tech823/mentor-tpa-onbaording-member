@@ -44,9 +44,9 @@ async function main() {
   logger.info("✔ Document types ready");
 
   // 2. Users
-  const superAdmin = await upsertUser("superadmin@healthrails.ai", "Super Admin", "SUPER_ADMIN");
-  const admin = await upsertUser("admin@healthrails.ai", "Platform Admin", "ADMIN");
-  const corporateAdmin = await upsertUser("kuj.admin@healthrails.ai", "KUJ Coordinator", "CORPORATE_ADMIN");
+  const superAdmin = await upsertUser("superadmin@mentortpa.com", "Super Admin", "SUPER_ADMIN");
+  const admin = await upsertUser("admin@mentortpa.com", "Platform Admin", "ADMIN");
+  const corporateAdmin = await upsertUser("kuj.admin@mentortpa.com", "KUJ Coordinator", "CORPORATE_ADMIN");
   logger.info("✔ Users ready");
 
   // 3. Corporate client: Karachi Union of Journalists
