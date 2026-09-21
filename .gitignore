@@ -37,3 +37,6 @@ Thumbs.db
 
 # drizzle
 apps/api/drizzle/meta/_journal.json.bak
+
+# vite temp config files
+*.timestamp-*.mjs
