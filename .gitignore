@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+logs/
+*.log
+npm-debug.log*
+
+# local file storage (uploaded documents)
+storage/
+uploads/
+
+# deployment artifacts / build packages (regenerated, not committed)
+release/
+*.zip
+*.tar.gz
+
+# generated screenshots
+screenshots/
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# drizzle
+apps/api/drizzle/meta/_journal.json.bak

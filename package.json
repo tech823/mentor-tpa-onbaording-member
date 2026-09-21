@@ -1,0 +1,23 @@
+{
+  "name": "mentor-onboarding",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Corporate Member Onboarding Platform (Mentor TPA)",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:api": "pnpm --filter @mentor/api dev",
+    "dev:web": "pnpm --filter @mentor/web dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @mentor/api db:generate",
+    "db:migrate": "pnpm --filter @mentor/api db:migrate",
+    "db:push": "pnpm --filter @mentor/api db:push",
+    "db:seed": "pnpm --filter @mentor/api db:seed",
+    "db:seed:kuj": "pnpm --filter @mentor/api db:seed:kuj",
+    "db:studio": "pnpm --filter @mentor/api db:studio",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
