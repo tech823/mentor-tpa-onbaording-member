@@ -1,6 +1,7 @@
 import type { ApiResponse, ApiError } from "@mentor/shared";
+import { API_BASE } from "./config";
 
-const BASE_URL = "/api";
+const BASE_URL = API_BASE;
 
 /** Thrown for any non-2xx response; carries the structured API error. */
 export class ApiRequestError extends Error {

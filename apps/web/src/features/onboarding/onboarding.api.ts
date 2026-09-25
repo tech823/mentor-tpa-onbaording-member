@@ -1,4 +1,5 @@
 import { api, ApiRequestError } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 import type { Language, FieldValueInput } from "@mentor/shared";
 import type { FormField, ProgrammeDocument } from "@/features/forms/forms.api";
 
@@ -67,7 +68,7 @@ async function uploadDocument(
   sessionToken: string,
   form: FormData
 ): Promise<UploadedDocument> {
-  const res = await fetch(`/api/onboarding/session/${sessionToken}/documents`, {
+  const res = await fetch(`${API_BASE}/onboarding/session/${sessionToken}/documents`, {
     method: "POST",
     body: form,
     credentials: "include",

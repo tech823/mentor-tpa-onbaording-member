@@ -8,6 +8,7 @@ import type {
   UpdateFieldInput,
   CreateSectionInput,
   CreateProgrammeDocumentInput,
+  UpdateProgrammeDocumentInput,
 } from "@mentor/shared";
 
 export type I18nText = Partial<Record<Language, string>>;
@@ -96,5 +97,7 @@ export const formsApi = {
 
   createDocument: (programmeId: string, input: CreateProgrammeDocumentInput) =>
     api.post<ProgrammeDocument>(`/programmes/${programmeId}/documents`, input),
+  updateDocument: (id: string, input: UpdateProgrammeDocumentInput) =>
+    api.put<ProgrammeDocument>(`/programme-documents/${id}`, input),
   deleteDocument: (id: string) => api.del(`/programme-documents/${id}`),
 };

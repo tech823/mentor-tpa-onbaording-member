@@ -10,10 +10,11 @@ import {
   ArrowDown,
   GripVertical,
   Lock,
+  EyeOff,
 } from "lucide-react";
 import type { SubjectType } from "@mentor/shared";
 import { useProgramme } from "@/features/programmes/programmes.hooks";
-import { useFormConfig, useDeleteField, useReorderFields } from "@/features/forms/forms.hooks";
+import { useFormConfig, useDeleteField, useReorderFields, useUpdateField } from "@/features/forms/forms.hooks";
 import { useAuth } from "@/features/auth/useAuth";
 import type { FormField } from "@/features/forms/forms.api";
 import { FIELD_TYPE_LABELS } from "@/features/forms/field-utils";
@@ -21,6 +22,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FieldEditorDialog } from "./builder/FieldEditorDialog";
 import { FormPreview } from "./builder/FormPreview";
@@ -36,6 +38,7 @@ export function FormBuilderPage() {
   const { data: configRes, isLoading } = useFormConfig(id);
   const deleteField = useDeleteField(id!);
   const reorderFields = useReorderFields(id!);
+  const updateField = useUpdateField(id!);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingField, setEditingField] = useState<FormField | null>(null);
@@ -127,7 +130,7 @@ export function FormBuilderPage() {
                     return (
                       <div key={field.id} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0">
                         <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-                        <div className="min-w-0 flex-1">
+                        <div className={`min-w-0 flex-1 ${!field.isActive ? "opacity-50" : ""}`}>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium">{field.label}</span>
                             {field.isRequired && <span className="text-destructive">*</span>}
@@ -139,8 +142,10 @@ export function FormBuilderPage() {
                                 <Lock className="h-3 w-3" /> system
                               </Badge>
                             )}
-                            {field.valueKind === "STRUCTURED" && (
-                              <Badge variant="outline" className="text-[10px]">coded</Badge>
+                            {!field.isActive && (
+                              <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+                                <EyeOff className="h-3 w-3" /> hidden
+                              </Badge>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -150,6 +155,13 @@ export function FormBuilderPage() {
                         </div>
                         {canManage && (
                           <div className="flex shrink-0 items-center gap-1">
+                            <div className="mr-1 flex items-center gap-1.5" title={field.isActive ? "Shown on form — turn off to hide" : "Hidden from form — turn on to show"}>
+                              <Switch
+                                checked={field.isActive}
+                                disabled={updateField.isPending}
+                                onCheckedChange={(checked) => updateField.mutate({ id: field.id, input: { isActive: checked } })}
+                              />
+                            </div>
                             <Button variant="ghost" size="icon" disabled={globalIndex <= 0 || reorderFields.isPending} onClick={() => move(allIds, globalIndex, -1)}>
                               <ArrowUp className="h-4 w-4" />
                             </Button>

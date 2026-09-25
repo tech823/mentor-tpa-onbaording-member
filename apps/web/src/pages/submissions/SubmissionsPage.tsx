@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Loader2, FileText, Download, Eye } from "lucide-react";
-import { SUBMISSION_STATUS } from "@mentor/shared";
 import { useSubmissions } from "@/features/submissions/submissions.hooks";
 import { submissionsApi, type ListSubmissionsParams } from "@/features/submissions/submissions.api";
 import { useCorporates } from "@/features/corporates/corporates.hooks";
@@ -19,10 +18,20 @@ export function SubmissionsPage() {
   const { hasRole } = useAuth();
   const canExport = hasRole("SUPER_ADMIN", "ADMIN");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [bucket, setBucket] = useState(""); // "" | in_process | review | accepted | rejected
   const [corporateId, setCorporateId] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 15;
+
+  // Four member-facing status buckets → the raw statuses they map to.
+  const STATUS_BUCKETS = [
+    { key: "", label: "All statuses", statuses: "" },
+    { key: "in_process", label: "In Process", statuses: "DRAFT,IN_PROGRESS" },
+    { key: "review", label: "Under Review", statuses: "SUBMITTED,UNDER_REVIEW" },
+    { key: "accepted", label: "Accepted", statuses: "VERIFIED,COMPLETED" },
+    { key: "rejected", label: "Rejected", statuses: "REJECTED" },
+  ];
+  const bucketStatuses = STATUS_BUCKETS.find((b) => b.key === bucket)?.statuses || undefined;
 
   const { data: corporatesRes } = useCorporates({ page: 1, pageSize: 100 });
   const corporates = corporatesRes?.data ?? [];
@@ -31,7 +40,7 @@ export function SubmissionsPage() {
     page,
     pageSize,
     search: search || undefined,
-    status: (status || undefined) as never,
+    statuses: bucketStatuses,
     corporateId: corporateId || undefined,
   };
   const { data, isLoading, isFetching } = useSubmissions(filters);
@@ -85,17 +94,16 @@ export function SubmissionsPage() {
             ))}
           </select>
           <select
-            value={status}
+            value={bucket}
             onChange={(e) => {
-              setStatus(e.target.value);
+              setBucket(e.target.value);
               setPage(1);
             }}
             className="h-10 rounded-md border border-input bg-card px-3 text-sm"
           >
-            <option value="">All statuses</option>
-            {SUBMISSION_STATUS.map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, " ")}
+            {STATUS_BUCKETS.map((b) => (
+              <option key={b.key} value={b.key}>
+                {b.label}
               </option>
             ))}
           </select>
@@ -156,7 +164,9 @@ export function SubmissionsPage() {
                 <TableCell>
                   <SubmissionStatusBadge status={s.status} />
                 </TableCell>
-                <TableCell className="text-muted-foreground">{formatDate(s.submittedAt)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {s.submittedAt ? formatDate(s.submittedAt) : <span className="text-xs italic opacity-60">Not submitted</span>}
+                </TableCell>
                 <TableCell className="text-end">
                   <Button asChild variant="ghost" size="sm">
                     <Link to={`/submissions/${s.id}`}>

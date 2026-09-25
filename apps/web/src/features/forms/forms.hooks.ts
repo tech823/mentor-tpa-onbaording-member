@@ -5,6 +5,7 @@ import type {
   UpdateFieldInput,
   CreateSectionInput,
   CreateProgrammeDocumentInput,
+  UpdateProgrammeDocumentInput,
 } from "@mentor/shared";
 
 const configKey = (programmeId: string) => ["form-config", programmeId];
@@ -54,6 +55,12 @@ export function useDeleteSection(programmeId: string) {
 export function useCreateDocument(programmeId: string) {
   return useConfigMutation(
     (input: CreateProgrammeDocumentInput) => formsApi.createDocument(programmeId, input),
+    programmeId
+  );
+}
+export function useUpdateDocument(programmeId: string) {
+  return useConfigMutation(
+    ({ id, input }: { id: string; input: UpdateProgrammeDocumentInput }) => formsApi.updateDocument(id, input),
     programmeId
   );
 }

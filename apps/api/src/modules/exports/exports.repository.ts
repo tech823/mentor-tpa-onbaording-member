@@ -5,6 +5,7 @@ import type { SubmissionStatus } from "@mentor/shared";
 
 export interface ExportFilters {
   status?: SubmissionStatus;
+  statuses?: SubmissionStatus[];
   corporateId?: string;
   programmeId?: string;
   dateFrom?: string;
@@ -24,6 +25,7 @@ export async function fetchSubmissionIds(f: ExportFilters): Promise<string[]> {
   if (f.corporateId) c.push(eq(programmes.corporateId, f.corporateId));
   if (f.programmeId) c.push(eq(submissions.programmeId, f.programmeId));
   if (f.status) c.push(eq(submissions.status, f.status));
+  if (f.statuses?.length) c.push(inArray(submissions.status, f.statuses));
   if (f.dateFrom) c.push(gte(submissions.createdAt, new Date(f.dateFrom)));
   if (f.dateTo) c.push(lte(submissions.createdAt, new Date(f.dateTo + "T23:59:59")));
   if (f.search) {

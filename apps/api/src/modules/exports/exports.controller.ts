@@ -8,6 +8,7 @@ export const exportSubmissionsController = asyncHandler(async (req: Request, res
   const q = req.query as unknown as ListSubmissionsQuery;
   const { buffer, filename, count } = await buildSubmissionsWorkbook(req.user!, {
     status: q.status,
+    statuses: q.statuses,
     corporateId: q.corporateId,
     programmeId: q.programmeId,
     dateFrom: q.dateFrom,

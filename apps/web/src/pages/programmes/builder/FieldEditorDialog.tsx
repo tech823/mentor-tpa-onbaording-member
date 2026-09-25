@@ -108,7 +108,8 @@ export function FieldEditorDialog({ programmeId, field, defaultSubjectType, open
       placeholder: placeholder.trim() || undefined,
       helpText: helpText.trim() || undefined,
       displayOrder: 0,
-      isActive: true,
+      // Preserve the field's shown/hidden state when editing; new fields default to shown.
+      isActive: isEdit ? field!.isActive : true,
       options: cleanOptions.map((o, i) => ({ ...o, displayOrder: i, isActive: true })),
     };
 

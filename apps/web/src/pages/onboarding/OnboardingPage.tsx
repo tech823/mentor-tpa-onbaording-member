@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, HeartPulse, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { Language, FieldValueInput } from "@mentor/shared";
@@ -35,8 +35,19 @@ export function OnboardingPage() {
   const [state, setState] = useState<SubmissionState | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [documents, setDocuments] = useState<ProgrammeDocument[]>([]);
-  const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
+
+  // The wizard step lives in the URL (?step=) so the browser/phone Back button
+  // moves ONE step back instead of dropping the member to the first page.
+  const [, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const clampStep = (i: number) => Math.min(Math.max(Number.isFinite(i) ? i : 0, 0), STEPS.length - 1);
+  const stepIndex = clampStep(Number(new URLSearchParams(location.search).get("step") ?? 0));
+  const goStep = (i: number, replace = false) => {
+    const next = new URLSearchParams(window.location.search);
+    next.set("step", String(clampStep(i)));
+    setSearchParams(next, { replace });
+  };
   const [submitErrors, setSubmitErrors] = useState<Record<string, string[]> | undefined>();
 
   const configQuery = useQuery({
@@ -89,7 +100,7 @@ export function OnboardingPage() {
       setState(resumed.data!.submission);
       setFields(resumed.data!.fields);
       setDocuments(resumed.data!.documents);
-      setStepIndex(0);
+      goStep(0, true); // start at step 0, replacing the welcome entry
       setPhase("form");
     } finally {
       setSaving(false);
@@ -107,7 +118,7 @@ export function OnboardingPage() {
     try {
       const res = await onboardingApi.saveMember(sessionToken, values, lang);
       setState(res.data!);
-      setStepIndex(1);
+      goStep(1);
     } finally {
       setSaving(false);
     }
@@ -241,8 +252,8 @@ export function OnboardingPage() {
           onAdd={addFamily}
           onUpdate={updateFamily}
           onRemove={removeFamily}
-          onNext={() => setStepIndex(2)}
-          onBack={() => setStepIndex(0)}
+          onNext={() => goStep(2)}
+          onBack={() => window.history.back()}
         />
       )}
       {stepIndex === 2 && state && (
@@ -252,8 +263,8 @@ export function OnboardingPage() {
           uploaded={state.documents}
           onUpload={uploadDoc}
           onRemove={removeDoc}
-          onNext={() => setStepIndex(3)}
-          onBack={() => setStepIndex(1)}
+          onNext={() => goStep(3)}
+          onBack={() => window.history.back()}
         />
       )}
       {stepIndex === 3 && state && (
@@ -264,7 +275,7 @@ export function OnboardingPage() {
           submitting={saving}
           submitErrors={submitErrors}
           onSubmit={submit}
-          onBack={() => setStepIndex(2)}
+          onBack={() => window.history.back()}
         />
       )}
     </OnboardingLayout>

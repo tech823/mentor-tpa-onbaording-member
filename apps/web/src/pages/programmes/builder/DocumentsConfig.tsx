@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Plus, Trash2, FileCheck2, Loader2 } from "lucide-react";
+import { Plus, Trash2, FileCheck2, Loader2, EyeOff } from "lucide-react";
 import { SUBJECT_TYPE, type SubjectType } from "@mentor/shared";
 import type { FormConfig } from "@/features/forms/forms.api";
-import { useDocumentTypes, useCreateDocument, useDeleteDocument } from "@/features/forms/forms.hooks";
+import { useDocumentTypes, useCreateDocument, useUpdateDocument, useDeleteDocument } from "@/features/forms/forms.hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 export function DocumentsConfig({ config, canManage }: { config: FormConfig; canManage: boolean }) {
   const programmeId = config.programme.id;
   const { data: typesRes } = useDocumentTypes();
   const createDoc = useCreateDocument(programmeId);
+  const updateDoc = useUpdateDocument(programmeId);
   const deleteDoc = useDeleteDocument(programmeId);
   const docTypes = typesRes?.data ?? [];
 
@@ -48,18 +50,53 @@ export function DocumentsConfig({ config, canManage }: { config: FormConfig; can
             <p className="text-sm text-muted-foreground">No documents required yet.</p>
           )}
           {config.documents.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 rounded-md border border-border p-3">
+            <div
+              key={d.id}
+              className={`flex items-center gap-3 rounded-md border border-border p-3 ${!d.isActive ? "opacity-50" : ""}`}
+            >
               <FileCheck2 className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1">
-                <div className="font-medium">{d.documentType.name}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {d.documentType.name}
+                  {!d.isActive && (
+                    <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+                      <EyeOff className="h-3 w-3" /> hidden
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {d.subjectType === "MEMBER" ? "Primary member" : "Family member"} ·{" "}
                   {d.allowedFileTypes.join(", ").toUpperCase()} · max {Math.round(d.maxFileSizeBytes / 1024 / 1024)}MB
                 </div>
               </div>
-              <Badge variant={d.isRequired ? "default" : "secondary"}>
-                {d.isRequired ? "Required" : "Optional"}
-              </Badge>
+              {canManage ? (
+                <button
+                  type="button"
+                  onClick={() => updateDoc.mutate({ id: d.id, input: { isRequired: !d.isRequired } })}
+                  disabled={updateDoc.isPending}
+                  title="Click to switch between Required and Optional"
+                >
+                  <Badge variant={d.isRequired ? "default" : "secondary"} className="cursor-pointer">
+                    {d.isRequired ? "Required" : "Optional"}
+                  </Badge>
+                </button>
+              ) : (
+                <Badge variant={d.isRequired ? "default" : "secondary"}>
+                  {d.isRequired ? "Required" : "Optional"}
+                </Badge>
+              )}
+              {canManage && (
+                <div
+                  className="flex items-center"
+                  title={d.isActive ? "Shown on form — turn off to hide" : "Hidden from form — turn on to show"}
+                >
+                  <Switch
+                    checked={d.isActive}
+                    disabled={updateDoc.isPending}
+                    onCheckedChange={(checked) => updateDoc.mutate({ id: d.id, input: { isActive: checked } })}
+                  />
+                </div>
+              )}
               {canManage && (
                 <Button variant="ghost" size="icon" onClick={() => deleteDoc.mutate(d.id)} disabled={deleteDoc.isPending}>
                   <Trash2 className="h-4 w-4 text-destructive" />

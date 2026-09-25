@@ -17,11 +17,20 @@ Built as the digital onboarding module for **Mentor TPA** (a subsidiary of Mento
 - **Programmes** — one or more onboarding programmes per corporate client.
 - **Dynamic form builder** — configure exactly which fields and documents each programme
   requires (10 field types, required flags, options, sections, drag-order, live preview) — no code.
+  Fields and documents can be **shown or hidden (activate / deactivate)** at any time without
+  deleting their data, and documents toggled required / optional inline.
 - **Secure onboarding links** — a unique, non-guessable link per programme; activate / deactivate / regenerate.
-- **Submissions** — searchable, filterable, paginated list of all members with family and document status.
+- **Submissions** — searchable, status-filterable, paginated list of all members with family and document status.
+- **Review workflow** — open any submission and **Accept** or **Reject** it. Statuses roll up into four
+  clear buckets — **In Process → Under Review → Accepted / Rejected** (a member's submission moves to
+  *Under Review* automatically on submit). Reviewing is limited to SUPER_ADMIN / ADMIN.
 - **Document verification** — secure download and PENDING / VERIFIED / REJECTED workflow.
-- **Excel export** — one click, English-standardized values with dynamic per-programme columns.
-- **Users, audit logs, dashboard** — role-based admin accounts, action history, and analytics charts.
+- **Excel export** — one click, English-standardized values with dynamic per-programme columns
+  (the primary member appears once, with each family member on its own row).
+- **User management** — create admin accounts and **edit their role & corporate access**; enable / disable
+  accounts. A role change takes effect immediately (limited to SUPER_ADMIN / ADMIN).
+- **Audit logs & dashboard** — action history and analytics charts.
+- **Responsive admin UI** — collapsible, grouped sidebar with a mobile drawer.
 
 ### Member experience (public, no account)
 - Opens a secure link and completes a mobile-first, step-based flow:
@@ -85,9 +94,9 @@ Seeded administrator accounts (password `ChangeMe123!` — change after first lo
 
 | Role            | Email |
 |-----------------|-------|
-| SUPER_ADMIN     | superadmin@healthrails.ai |
-| ADMIN           | admin@healthrails.ai |
-| CORPORATE_ADMIN | kuj.admin@healthrails.ai |
+| SUPER_ADMIN     | superadmin@mentortpa.com |
+| ADMIN           | admin@mentortpa.com |
+| CORPORATE_ADMIN | kuj.admin@mentortpa.com |
 
 ## Useful scripts
 

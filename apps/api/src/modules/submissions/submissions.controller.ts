@@ -13,6 +13,7 @@ export const listController = asyncHandler(async (req: Request, res: Response) =
     pageSize: q.pageSize,
     search: q.search,
     status: q.status,
+    statuses: q.statuses,
     corporateId: q.corporateId,
     programmeId: q.programmeId,
     dateFrom: q.dateFrom,

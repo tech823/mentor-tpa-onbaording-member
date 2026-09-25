@@ -58,22 +58,24 @@ export async function buildSubmissionsWorkbook(user: AuthUser, filters: Omit<rep
   ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
 
   for (const s of subs) {
-    const base: Record<string, string> = {
+    // 1) The primary member (e.g. father) gets his OWN row — his details appear
+    //    exactly once (relationship = SELF), family columns left blank.
+    const memberMap = new Map(s.fieldValues.map((v) => [v.fieldKey, v]));
+    const memberRow: Record<string, string> = {
       corporate: s.programme.corporate.name,
       programme: s.programme.name,
       status: s.status,
       submittedAt: s.submittedAt ? new Date(s.submittedAt).toISOString().slice(0, 10) : "",
+      relationship: "SELF",
     };
-    const memberMap = new Map(s.fieldValues.map((v) => [v.fieldKey, v]));
-    for (const c of memberCols) base[c.key] = englishValue(memberMap.get(c.key.slice(2)));
+    for (const c of memberCols) memberRow[c.key] = englishValue(memberMap.get(c.key.slice(2)));
+    ws.addRow(memberRow);
 
-    if (s.familyMembers.length === 0) {
-      ws.addRow(base);
-      continue;
-    }
+    // 2) Each family member is a separate row; the member/context columns stay
+    //    blank so the father's name is never repeated.
     for (const fam of s.familyMembers) {
       const famMap = new Map(fam.fieldValues.map((v) => [v.fieldKey, v]));
-      const row: Record<string, string> = { ...base, relationship: fam.relationship ?? "" };
+      const row: Record<string, string> = { relationship: fam.relationship ?? "" };
       for (const c of familyCols) row[c.key] = englishValue(famMap.get(c.key.slice(2)));
       ws.addRow(row);
     }

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Users as UsersIcon, Plus, UserPlus } from "lucide-react";
-import { ROLES, createUserSchema, type CreateUserInput } from "@mentor/shared";
+import { Loader2, Users as UsersIcon, Plus, UserPlus, Pencil } from "lucide-react";
+import { ROLES, createUserSchema, updateUserSchema, type CreateUserInput, type UpdateUserInput } from "@mentor/shared";
 import { api, ApiRequestError } from "@/lib/api";
 import { useCorporates } from "@/features/corporates/corporates.hooks";
 import { PageHeader } from "@/components/PageHeader";
@@ -25,6 +25,7 @@ interface UserRow {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  corporateIds: string[];
 }
 
 const roleVariant: Record<string, "default" | "secondary" | "success"> = {
@@ -36,6 +37,7 @@ const roleVariant: Record<string, "default" | "secondary" | "success"> = {
 export function UsersPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<UserRow | null>(null);
   const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => api.get<UserRow[]>("/users") });
   const rows = data?.data ?? [];
 
@@ -64,19 +66,20 @@ export function UsersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Active</TableHead>
               <TableHead>Last login</TableHead>
+              <TableHead className="text-end">Edit</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center">
+                <TableCell colSpan={6} className="py-10 text-center">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
                   <UsersIcon className="mx-auto mb-2 h-8 w-8 opacity-40" /> No users
                 </TableCell>
               </TableRow>
@@ -95,6 +98,11 @@ export function UsersPage() {
                   />
                 </TableCell>
                 <TableCell className="text-muted-foreground">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</TableCell>
+                <TableCell className="text-end">
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(u)} title="Edit role & access">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -102,6 +110,7 @@ export function UsersPage() {
       </Card>
 
       <NewUserDialog open={open} onOpenChange={setOpen} />
+      <EditUserDialog user={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -210,6 +219,117 @@ function NewUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
               Create user
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditUserDialog({ user, onClose }: { user: UserRow | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: corporatesRes } = useCorporates({ page: 1, pageSize: 100 });
+  const corporates = corporatesRes?.data ?? [];
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<UpdateUserInput>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: { fullName: "", role: "ADMIN", corporateIds: [] },
+  });
+
+  // Prefill the form whenever a different user is opened.
+  useEffect(() => {
+    if (user) {
+      reset({ fullName: user.fullName, role: user.role as UpdateUserInput["role"], corporateIds: user.corporateIds ?? [] });
+      setServerError(null);
+    }
+  }, [user, reset]);
+
+  const role = watch("role");
+  const selected = watch("corporateIds") ?? [];
+
+  const update = useMutation({
+    mutationFn: (input: UpdateUserInput) => api.put(`/users/${user!.id}`, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      onClose();
+    },
+  });
+
+  const onSubmit = async (values: UpdateUserInput) => {
+    setServerError(null);
+    try {
+      await update.mutateAsync(values);
+    } catch (err) {
+      setServerError(err instanceof ApiRequestError ? err.message : "Something went wrong");
+    }
+  };
+
+  const toggleCorp = (id: string) => {
+    setValue("corporateIds", selected.includes(id) ? selected.filter((c) => c !== id) : [...selected, id], {
+      shouldValidate: true,
+    });
+  };
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-primary" /> Edit user
+          </DialogTitle>
+          <DialogDescription>
+            Change this user's role and corporate access. {user?.email}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Full name</Label>
+              <Input {...register("fullName")} />
+              {errors.fullName && <p className="text-xs text-destructive">{errors.fullName.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <select {...register("role")} className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm">
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {role !== "SUPER_ADMIN" && (
+            <div className="space-y-1.5">
+              <Label>Assigned corporates</Label>
+              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                {corporates.length === 0 && <p className="p-2 text-xs text-muted-foreground">No corporates yet.</p>}
+                {corporates.map((c) => (
+                  <label key={c.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                    <input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleCorp(c.id)} />
+                    {c.name} <span className="text-xs text-muted-foreground">({c.shortCode})</span>
+                  </label>
+                ))}
+              </div>
+              {errors.corporateIds && <p className="text-xs text-destructive">{errors.corporateIds.message as string}</p>}
+            </div>
+          )}
+
+          {serverError && <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{serverError}</div>}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save changes
             </Button>
           </DialogFooter>
         </form>

@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { LANGUAGES, LANGUAGE_LABELS, type Language } from "@mentor/shared";
 import type { FormConfig, FormField } from "@/features/forms/forms.api";
-import { localized, OPTION_TYPES } from "@/features/forms/field-utils";
+import { localized } from "@/features/forms/field-utils";
 import { RTL_LANGUAGES } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 
 function PreviewField({ field, lang }: { field: FormField; lang: Language }) {
   const label = localized(field.label, field.labelI18n, lang);
@@ -56,11 +55,6 @@ function PreviewField({ field, lang }: { field: FormField; lang: Language }) {
     <div className="space-y-1.5">
       <Label htmlFor={id}>
         {label} {field.isRequired && <span className="text-destructive">*</span>}
-        {field.valueKind === "STRUCTURED" && OPTION_TYPES.includes(field.fieldType) && (
-          <Badge variant="outline" className="ms-2 text-[10px]">
-            coded
-          </Badge>
-        )}
       </Label>
       {control()}
       {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
@@ -75,6 +69,7 @@ export function FormPreview({ config }: { config: FormConfig }) {
   const activeFields = config.fields.filter((f) => f.isActive);
   const memberFields = activeFields.filter((f) => f.subjectType === "MEMBER");
   const familyFields = activeFields.filter((f) => f.subjectType === "FAMILY_MEMBER");
+  const activeDocuments = config.documents.filter((d) => d.isActive);
 
   return (
     <div>
@@ -119,13 +114,13 @@ export function FormPreview({ config }: { config: FormConfig }) {
           </Card>
         )}
 
-        {config.documents.length > 0 && (
+        {activeDocuments.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Required Documents</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {config.documents.map((d) => (
+              {activeDocuments.map((d) => (
                 <div key={d.id} className="flex items-center justify-between rounded-md border border-dashed border-input p-2 text-sm">
                   <span>
                     {d.documentType.name}

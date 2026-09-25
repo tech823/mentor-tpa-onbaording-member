@@ -14,7 +14,10 @@ const cookieOptions = () => ({
   sameSite: "lax" as const,
   domain: env.COOKIE_DOMAIN || undefined,
   path: "/",
-  maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  // Persistent cookie so a login survives browser/tab restarts. The session has
+  // no time-based expiry — it ends only on logout (which clears this cookie).
+  // 400 days is the maximum lifetime browsers will retain a cookie.
+  maxAge: 1000 * 60 * 60 * 24 * 400,
 });
 
 export const loginController = asyncHandler(async (req: Request, res: Response) => {

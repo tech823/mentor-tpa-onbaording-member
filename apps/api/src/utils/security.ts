@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import jwt, { type SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { customAlphabet } from "nanoid";
 import { env } from "../config/env";
 import type { Role } from "@mentor/shared";
@@ -15,10 +15,13 @@ export interface AccessTokenPayload {
   role: Role;
 }
 
+/**
+ * Signs the session token. Intentionally issued WITHOUT an `expiresIn` claim:
+ * the session is governed by login/logout, not a timer. Sign-out clears the
+ * cookie (see auth.controller), which is the only thing that ends the session.
+ */
 export function signAccessToken(payload: AccessTokenPayload): string {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_TTL,
-  } as SignOptions);
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET);
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {

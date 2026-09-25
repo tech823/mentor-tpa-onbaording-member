@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, FileText, Check, X, ExternalLink, Users, User } from "lucide-react";
-import { SUBMISSION_STATUS, type SubmissionStatus } from "@mentor/shared";
+import { type SubmissionStatus } from "@mentor/shared";
 import {
   useSubmission,
   useUpdateSubmissionStatus,
@@ -36,8 +36,13 @@ export function SubmissionDetailPage() {
   const updateStatus = useUpdateSubmissionStatus(id!);
   const verifyDoc = useVerifyDocument(id!);
 
-  const [status, setStatus] = useState<SubmissionStatus | "">("");
   const [notes, setNotes] = useState("");
+
+  const changeStatus = (next: SubmissionStatus) =>
+    updateStatus.mutate(
+      { status: next, reviewNotes: notes || undefined },
+      { onSuccess: () => setNotes("") }
+    );
 
   const labelMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -150,34 +155,92 @@ export function SubmissionDetailPage() {
               <CardTitle className="text-base">Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <InfoRow label="Current" value={sub.status.replace(/_/g, " ")} />
+              <div className="flex items-center justify-between border-b border-border py-2">
+                <span className="text-sm text-muted-foreground">Current</span>
+                <SubmissionStatusBadge status={sub.status} />
+              </div>
               <InfoRow label="Submitted" value={formatDate(sub.submittedAt)} />
               <InfoRow label="Language" value={sub.language.toUpperCase()} />
+              {sub.reviewNotes && (
+                <div className="rounded-md bg-muted/50 p-2 text-xs">
+                  <div className="mb-0.5 font-medium text-muted-foreground">Review notes</div>
+                  <div className="whitespace-pre-wrap">{sub.reviewNotes}</div>
+                </div>
+              )}
+
               {canManage && (
-                <div className="space-y-2 pt-2">
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as SubmissionStatus)}
-                    className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
-                  >
-                    <option value="">Change status…</option>
-                    {SUBMISSION_STATUS.map((s) => (
-                      <option key={s} value={s}>
-                        {s.replace(/_/g, " ")}
-                      </option>
-                    ))}
-                  </select>
-                  <Textarea placeholder="Review notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-                  <Button
-                    className="w-full"
-                    disabled={!status || updateStatus.isPending}
-                    onClick={() =>
-                      status && updateStatus.mutate({ status, reviewNotes: notes || undefined }, { onSuccess: () => { setStatus(""); setNotes(""); } })
-                    }
-                  >
-                    {updateStatus.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Update status
-                  </Button>
+                <div className="space-y-2 pt-1">
+                  {/* Decided → show a coloured result panel + a Reopen option. */}
+                  {sub.status === "VERIFIED" || sub.status === "COMPLETED" ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-md bg-emerald-50 p-3 text-emerald-700">
+                        <Check className="h-5 w-5" />
+                        <span className="text-sm font-semibold">Accepted — enrollment approved</span>
+                      </div>
+                      <Button variant="outline" className="w-full" disabled={updateStatus.isPending} onClick={() => changeStatus("SUBMITTED")}>
+                        {updateStatus.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Reopen (dobara review)
+                      </Button>
+                    </div>
+                  ) : sub.status === "REJECTED" ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-destructive">
+                        <X className="h-5 w-5" />
+                        <span className="text-sm font-semibold">Rejected</span>
+                      </div>
+                      <Button variant="outline" className="w-full" disabled={updateStatus.isPending} onClick={() => changeStatus("SUBMITTED")}>
+                        {updateStatus.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Reopen (dobara review)
+                      </Button>
+                    </div>
+                  ) : sub.status === "SUBMITTED" || sub.status === "UNDER_REVIEW" ? (
+                    /* Member submitted → this is where the admin accepts or rejects. */
+                    <>
+                      <Textarea
+                        placeholder="Review notes (optional — reject karte waqt reason likhein)"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={2}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                          disabled={updateStatus.isPending}
+                          onClick={() => changeStatus("VERIFIED")}
+                        >
+                          {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          Accept
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          disabled={updateStatus.isPending}
+                          onClick={() => changeStatus("REJECTED")}
+                        >
+                          <X className="h-4 w-4" />
+                          Reject
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    /* In Process (DRAFT / IN_PROGRESS) — member ne abhi submit nahi kiya. */
+                    <div className="space-y-2 rounded-md bg-sky-50 p-3">
+                      <p className="text-xs text-sky-700">
+                        Member abhi form bhar raha hai — submit nahi kiya. Jaise hi member complete kar ke
+                        <span className="font-medium"> Submit</span> karega, ye khud
+                        <span className="font-medium"> Under Review</span> me aa jayega — phir Accept / Reject aa jayega.
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full bg-white"
+                        disabled={updateStatus.isPending}
+                        onClick={() => changeStatus("UNDER_REVIEW")}
+                      >
+                        {updateStatus.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Move to review (manually)
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

@@ -9,10 +9,20 @@ import { hashPassword } from "../../utils/security";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { recordAudit } from "../audit/audit.service";
-import { createUserSchema, toggleUserActiveSchema, idParamSchema, type CreateUserInput, type ToggleUserActiveInput } from "@mentor/shared";
+import {
+  createUserSchema,
+  updateUserSchema,
+  toggleUserActiveSchema,
+  idParamSchema,
+  type CreateUserInput,
+  type UpdateUserInput,
+  type ToggleUserActiveInput,
+} from "@mentor/shared";
 
 const router = Router();
-router.use(requireAuth, requireRole("SUPER_ADMIN"));
+// User management (list / create / edit role / enable-disable) is limited to
+// SUPER_ADMIN and ADMIN only — CORPORATE_ADMIN and others get 403.
+router.use(requireAuth, requireRole("SUPER_ADMIN", "ADMIN"));
 
 const publicCols = {
   id: users.id,
@@ -24,12 +34,21 @@ const publicCols = {
   createdAt: users.createdAt,
 };
 
-// List
+// List (with each user's assigned corporate ids, for the edit dialog)
 router.get(
   "/",
   asyncHandler(async (_req, res) => {
     const rows = await db.select(publicCols).from(users).orderBy(desc(users.createdAt));
-    return ok(res, rows);
+    const links = await db
+      .select({ userId: userCorporates.userId, corporateId: userCorporates.corporateId })
+      .from(userCorporates);
+    const byUser = new Map<string, string[]>();
+    for (const l of links) {
+      const arr = byUser.get(l.userId) ?? [];
+      arr.push(l.corporateId);
+      byUser.set(l.userId, arr);
+    }
+    return ok(res, rows.map((r) => ({ ...r, corporateIds: byUser.get(r.id) ?? [] })));
   })
 );
 
@@ -53,6 +72,42 @@ router.post(
     }
     await recordAudit(req, req.user, { action: "USER_CREATED", entityType: "user", entityId: user?.id, metadata: { role: input.role } });
     return created(res, user);
+  })
+);
+
+// Edit — change name, role and corporate access. Role change takes effect on the
+// user's very next request (requireAuth re-reads the role fresh from the DB).
+router.put(
+  "/:id",
+  validate({ params: idParamSchema, body: updateUserSchema }),
+  asyncHandler(async (req, res) => {
+    const input = req.body as UpdateUserInput;
+    const id = req.params.id!;
+    const existing = await db.query.users.findFirst({ where: eq(users.id, id) });
+    if (!existing) throw ApiError.notFound("User not found");
+    if (id === req.user!.id && input.role !== existing.role) {
+      throw ApiError.badRequest("You cannot change your own role");
+    }
+
+    const [user] = await db
+      .update(users)
+      .set({ fullName: input.fullName, role: input.role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning(publicCols);
+
+    // Rebuild corporate access: SUPER_ADMIN has implicit access to all (no rows).
+    await db.delete(userCorporates).where(eq(userCorporates.userId, id));
+    if (input.role !== "SUPER_ADMIN" && input.corporateIds.length) {
+      await db.insert(userCorporates).values(input.corporateIds.map((corporateId) => ({ userId: id, corporateId })));
+    }
+
+    await recordAudit(req, req.user, {
+      action: "USER_UPDATED",
+      entityType: "user",
+      entityId: id,
+      metadata: { role: input.role },
+    });
+    return ok(res, user);
   })
 );
 

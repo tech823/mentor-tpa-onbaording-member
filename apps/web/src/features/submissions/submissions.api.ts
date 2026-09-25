@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 import type { ApiResponse, SubmissionStatus, DocumentVerificationStatus, Language } from "@mentor/shared";
 
 export interface SubmissionListRow {
@@ -67,6 +68,8 @@ export interface ListSubmissionsParams {
   pageSize?: number;
   search?: string;
   status?: SubmissionStatus;
+  /** Comma-separated statuses for bucket filters, e.g. "SUBMITTED,UNDER_REVIEW". */
+  statuses?: string;
   corporateId?: string;
   programmeId?: string;
   dateFrom?: string;
@@ -81,10 +84,10 @@ export const submissionsApi = {
     api.put<SubmissionDetail>(`/submissions/${id}/status`, { status, reviewNotes }),
   verifyDocument: (docId: string, status: DocumentVerificationStatus, notes?: string) =>
     api.put<DetailDocument>(`/documents/${docId}/verification`, { status, notes }),
-  downloadUrl: (docId: string) => `/api/documents/${docId}/download`,
+  downloadUrl: (docId: string) => `${API_BASE}/documents/${docId}/download`,
   exportUrl: (params: ListSubmissionsParams) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => v !== undefined && v !== "" && qs.set(k, String(v)));
-    return `/api/exports/submissions?${qs.toString()}`;
+    return `${API_BASE}/exports/submissions?${qs.toString()}`;
   },
 };

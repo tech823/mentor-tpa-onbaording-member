@@ -8,6 +8,7 @@ export interface ListParams {
   pageSize: number;
   search?: string;
   status?: SubmissionStatus;
+  statuses?: SubmissionStatus[];
   corporateId?: string;
   programmeId?: string;
   dateFrom?: string;
@@ -33,6 +34,7 @@ function buildWhere(p: ListParams): SQL | undefined {
   if (p.corporateId) c.push(eq(programmes.corporateId, p.corporateId));
   if (p.programmeId) c.push(eq(submissions.programmeId, p.programmeId));
   if (p.status) c.push(eq(submissions.status, p.status));
+  if (p.statuses?.length) c.push(inArray(submissions.status, p.statuses));
   if (p.dateFrom) c.push(gte(submissions.createdAt, new Date(p.dateFrom)));
   if (p.dateTo) c.push(lte(submissions.createdAt, new Date(p.dateTo + "T23:59:59")));
   if (p.search) {
