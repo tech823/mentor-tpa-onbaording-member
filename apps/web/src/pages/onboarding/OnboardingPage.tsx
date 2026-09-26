@@ -6,6 +6,7 @@ import type { Language, FieldValueInput } from "@mentor/shared";
 import { onboardingApi, type OnboardingConfig, type SubmissionState } from "@/features/onboarding/onboarding.api";
 import type { FormField, ProgrammeDocument } from "@/features/forms/forms.api";
 import { hydrateValues } from "@/features/onboarding/state-utils";
+import { compressImageFile } from "@/lib/image";
 import { getStoredLanguage } from "@/i18n";
 import { ApiRequestError } from "@/lib/api";
 import { OnboardingLayout, type Step } from "./OnboardingLayout";
@@ -138,8 +139,10 @@ export function OnboardingPage() {
   };
 
   const uploadDoc = async (programmeDocumentId: string, familyMemberId: string | undefined, file: File) => {
+    // Shrink large photos in-browser so uploads pass server limits and save disk.
+    const toSend = await compressImageFile(file);
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", toSend);
     form.append("programmeDocumentId", programmeDocumentId);
     if (familyMemberId) form.append("familyMemberId", familyMemberId);
     const doc = await onboardingApi.uploadDocument(sessionToken!, form);

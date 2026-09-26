@@ -35,22 +35,34 @@ function DocSlot({
 
   const pick = () => inputRef.current?.click();
 
+  const maxMb = Math.max(1, Math.round(cfg.maxFileSizeBytes / 1024 / 1024));
+  const isImage = (name: string) => /\.(jpe?g|png|webp)$/i.test(name);
+
   const handleFile = async (file: File) => {
     setErr(null);
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!cfg.allowedFileTypes.includes(ext)) {
-      setErr(`Only ${cfg.allowedFileTypes.join(", ").toUpperCase()} allowed`);
+      setErr(`Only ${cfg.allowedFileTypes.join(", ").toUpperCase()} files are allowed.`);
       return;
     }
-    if (file.size > cfg.maxFileSizeBytes) {
-      setErr(`Max ${Math.round(cfg.maxFileSizeBytes / 1024 / 1024)}MB`);
+    // Images are compressed before upload, so only hard-limit non-images (e.g. PDF).
+    // A generous cap on images avoids memory issues on very large originals.
+    const image = isImage(file.name);
+    const overLimit = image ? file.size > 40 * 1024 * 1024 : file.size > cfg.maxFileSizeBytes;
+    if (overLimit) {
+      const fileMb = (file.size / 1024 / 1024).toFixed(1);
+      setErr(
+        image
+          ? `This photo is very large (${fileMb} MB). Please choose a smaller/normal photo.`
+          : `This file is ${fileMb} MB — the maximum allowed is ${maxMb} MB. Please upload a smaller file.`
+      );
       return;
     }
     setBusy(true);
     try {
       await onUpload(cfg.id, familyMemberId, file);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Upload failed");
+      setErr(e instanceof Error ? e.message : "Upload failed. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -77,14 +89,19 @@ function DocSlot({
           </button>
         </div>
       ) : (
-        <button
-          onClick={pick}
-          disabled={busy}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-input py-4 text-sm text-muted-foreground hover:bg-accent/50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Upload {cfg.allowedFileTypes.join("/").toUpperCase()}
-        </button>
+        <>
+          <button
+            onClick={pick}
+            disabled={busy}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-input py-4 text-sm text-muted-foreground hover:bg-accent/50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Upload {cfg.allowedFileTypes.join("/").toUpperCase()}
+          </button>
+          <p className="mt-1 text-center text-[11px] text-muted-foreground">
+            Max {maxMb} MB · {cfg.allowedFileTypes.join(", ").toUpperCase()}
+          </p>
+        </>
       )}
       {err && (
         <p className="mt-1 flex items-center gap-1 text-xs text-destructive">

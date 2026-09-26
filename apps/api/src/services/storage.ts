@@ -1,16 +1,28 @@
 import { promises as fs, createReadStream } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { env } from "../config/env";
 
 /**
- * Storage abstraction (spec section 10/19). MVP writes to local disk; the same
- * interface can be backed by S3/R2 later by swapping the driver — callers only
- * ever hold an opaque `storageKey`, never a filesystem path or bucket credential.
+ * Storage abstraction (spec section 10/19). Files are addressed by an opaque
+ * `storageKey` — callers never hold a filesystem path or bucket credential.
+ *
+ * Two drivers:
+ *  - local : writes to disk (dev / small single-server deployments)
+ *  - s3    : any S3-compatible object store (AWS S3, Cloudflare R2, Spaces, MinIO)
+ *            — recommended for production so high upload volume never fills the
+ *            app server's disk.
  */
 export interface StorageDriver {
   put(key: string, data: Buffer, contentType: string): Promise<void>;
-  getStream(key: string): ReturnType<typeof createReadStream>;
+  getStream(key: string): Promise<Readable>;
   getBuffer(key: string): Promise<Buffer>;
   delete(key: string): Promise<void>;
 }
@@ -30,11 +42,11 @@ class LocalDiskDriver implements StorageDriver {
     await fs.writeFile(full, data);
   }
 
-  getStream(key: string) {
+  async getStream(key: string): Promise<Readable> {
     return createReadStream(this.resolve(key));
   }
 
-  getBuffer(key: string) {
+  getBuffer(key: string): Promise<Buffer> {
     return fs.readFile(this.resolve(key));
   }
 
@@ -43,11 +55,55 @@ class LocalDiskDriver implements StorageDriver {
   }
 }
 
-export const storage: StorageDriver =
-  env.STORAGE_DRIVER === "local"
-    ? new LocalDiskDriver(path.resolve(env.STORAGE_LOCAL_DIR))
-    : // S3 driver plugs in here (Phase later) — same interface.
-      new LocalDiskDriver(path.resolve(env.STORAGE_LOCAL_DIR));
+class S3Driver implements StorageDriver {
+  private readonly client: S3Client;
+
+  constructor(private readonly bucket: string) {
+    this.client = new S3Client({
+      region: env.S3_REGION,
+      endpoint: env.S3_ENDPOINT || undefined,
+      forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      credentials:
+        env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY
+          ? { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY }
+          : undefined,
+    });
+  }
+
+  async put(key: string, data: Buffer, contentType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: data, ContentType: contentType })
+    );
+  }
+
+  async getStream(key: string): Promise<Readable> {
+    const res = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    return res.Body as Readable;
+  }
+
+  async getBuffer(key: string): Promise<Buffer> {
+    const res = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const chunks: Buffer[] = [];
+    for await (const chunk of res.Body as Readable) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+}
+
+function createStorage(): StorageDriver {
+  if (env.STORAGE_DRIVER === "s3") {
+    if (!env.S3_BUCKET) {
+      throw new Error("STORAGE_DRIVER=s3 requires S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY");
+    }
+    return new S3Driver(env.S3_BUCKET);
+  }
+  return new LocalDiskDriver(path.resolve(env.STORAGE_LOCAL_DIR));
+}
+
+export const storage: StorageDriver = createStorage();
 
 /** Builds a namespaced, collision-free storage key for a submission document. */
 export function buildStorageKey(submissionId: string, originalName: string): string {

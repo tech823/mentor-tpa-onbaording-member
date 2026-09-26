@@ -36,7 +36,7 @@ export async function getForDownload(user: AuthUser, id: string) {
   if (!doc) throw ApiError.notFound("Document not found");
   assertCorporateAccess(user, doc.submission.programme.corporateId);
   return {
-    stream: storage.getStream(doc.storageKey),
+    stream: await storage.getStream(doc.storageKey),
     mimeType: doc.mimeType,
     fileName: doc.originalFileName,
   };

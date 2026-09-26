@@ -73,7 +73,23 @@ async function uploadDocument(
     body: form,
     credentials: "include",
   });
-  const json = await res.json();
+  // A reverse proxy (nginx/Apache) may reject an oversized upload with 413 and a
+  // non-JSON body — surface a clear "too large" message instead of a JSON parse error.
+  if (res.status === 413) {
+    throw new ApiRequestError(413, {
+      code: "FILE_TOO_LARGE",
+      message: "This file is too large to upload. Please upload a smaller file.",
+    });
+  }
+  let json: { success?: boolean; data?: UploadedDocument; error?: { code: string; message: string } };
+  try {
+    json = await res.json();
+  } catch {
+    throw new ApiRequestError(res.status, {
+      code: "UPLOAD_FAILED",
+      message: res.status >= 500 ? "Server error while uploading. Please try again." : "Upload failed. Please try again.",
+    });
+  }
   if (!res.ok || !json.success) {
     throw new ApiRequestError(res.status, json.error ?? { code: "UPLOAD_FAILED", message: "Upload failed" });
   }

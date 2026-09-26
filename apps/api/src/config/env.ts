@@ -29,6 +29,18 @@ const envSchema = z.object({
   STORAGE_LOCAL_DIR: z.string().default("./storage"),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 
+  // S3-compatible object storage (AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO…).
+  // Only required when STORAGE_DRIVER=s3.
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().default("auto"),
+  S3_ENDPOINT: z.string().optional(), // e.g. https://<acct>.r2.cloudflarestorage.com — omit for AWS
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Mentor Onboarding <onboarding@example.com>"),
   ADMIN_NOTIFY_EMAIL: z.string().optional(),
