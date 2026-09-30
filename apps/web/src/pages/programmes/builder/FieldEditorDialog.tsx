@@ -242,9 +242,9 @@ export function FieldEditorDialog({ programmeId, field, defaultSubjectType, open
             </label>
             <label className="flex items-center justify-between">
               <span className="text-sm font-medium">
-                Standardize to codes
+                Standardize answers
                 <span className="block text-xs font-normal text-muted-foreground">
-                  Store a fixed English code regardless of entry language (for filtering/export).
+                  Save one consistent value no matter which language the member uses — keeps exports and reports clean.
                 </span>
               </span>
               <Switch checked={standardize} onCheckedChange={setStandardize} />

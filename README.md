@@ -19,12 +19,15 @@ Built as the digital onboarding module for **Mentor TPA** (a subsidiary of Mento
   requires (10 field types, required flags, options, sections, drag-order, live preview) — no code.
   Fields and documents can be **shown or hidden (activate / deactivate)** at any time without
   deleting their data, and documents toggled required / optional inline.
-- **Secure onboarding links** — a unique, non-guessable link per programme; activate / deactivate / regenerate.
-- **Submissions** — searchable, status-filterable, paginated list of all members with family and document status.
+- **Secure onboarding links** — one permanent, non-guessable link per programme (the URL never
+  changes); activate / deactivate to pause or resume enrolment.
+- **Submissions** — searchable, status-filterable, paginated list of all members with family and
+  document status; delete a submission (with its files) when needed.
 - **Review workflow** — open any submission and **Accept** or **Reject** it. Statuses roll up into four
   clear buckets — **In Process → Under Review → Accepted / Rejected** (a member's submission moves to
   *Under Review* automatically on submit). Reviewing is limited to SUPER_ADMIN / ADMIN.
-- **Document verification** — secure download and PENDING / VERIFIED / REJECTED workflow.
+- **Document verification** — secure download and PENDING / VERIFIED / REJECTED workflow, with a
+  relationship-aware requirement model (see below).
 - **Excel export** — one click, English-standardized values with dynamic per-programme columns
   (the primary member appears once, with each family member on its own row).
 - **User management** — create admin accounts and **edit their role & corporate access**; enable / disable
@@ -37,8 +40,13 @@ Built as the digital onboarding module for **Mentor TPA** (a subsidiary of Mento
   **Personal → Family → Documents → Review → Submit**.
 - **Multilingual** — English, Urdu, Sindhi, Pashto (RTL-aware); pick a language at any time.
 - **Dynamic family members** — add unlimited spouse / children / dependents.
-- **Document uploads** — CNIC, B-Form, FRC and any configured document (image / PDF, validated).
-- **Draft & resume** — progress is saved; closing the browser does not lose data.
+- **Smart, flexible document requirements** — the member uploads their own CNIC; a **spouse** provides a
+  CNIC; a **child** provides **any one** of B-Form / Birth Certificate / FRC. Members with no dependents
+  of a given type are never asked for those documents, so the flow never blocks unnecessarily.
+- **Uploads** — images are compressed in-browser before upload (smaller, faster); clear size/type
+  limits with friendly errors. Image / PDF, validated.
+- **Draft & resume** — progress is saved; closing the browser does not lose data. The Back button moves
+  one step at a time.
 
 ### Data standardization
 Structured values (gender, relationship, etc.) are stored as canonical **English codes** regardless

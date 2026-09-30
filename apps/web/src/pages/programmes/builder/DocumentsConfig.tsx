@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Plus, Trash2, FileCheck2, Loader2, EyeOff } from "lucide-react";
 import { SUBJECT_TYPE, type SubjectType } from "@mentor/shared";
-import type { FormConfig } from "@/features/forms/forms.api";
+import type { FormConfig, ProgrammeDocument } from "@/features/forms/forms.api";
 import { useDocumentTypes, useCreateDocument, useUpdateDocument, useDeleteDocument } from "@/features/forms/forms.hooks";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ export function DocumentsConfig({ config, canManage }: { config: FormConfig; can
   const [documentTypeId, setDocumentTypeId] = useState("");
   const [subjectType, setSubjectType] = useState<SubjectType>("MEMBER");
   const [isRequired, setIsRequired] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<ProgrammeDocument | null>(null);
 
   const add = () => {
     if (!documentTypeId) return;
@@ -37,6 +39,7 @@ export function DocumentsConfig({ config, canManage }: { config: FormConfig; can
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
@@ -98,7 +101,7 @@ export function DocumentsConfig({ config, canManage }: { config: FormConfig; can
                 </div>
               )}
               {canManage && (
-                <Button variant="ghost" size="icon" onClick={() => deleteDoc.mutate(d.id)} disabled={deleteDoc.isPending}>
+                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(d)} disabled={deleteDoc.isPending}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               )}
@@ -149,5 +152,21 @@ export function DocumentsConfig({ config, canManage }: { config: FormConfig; can
         )}
       </CardContent>
     </Card>
+
+    <ConfirmDialog
+      open={!!deleteTarget}
+      onOpenChange={(o) => !o && setDeleteTarget(null)}
+      title="Delete document requirement?"
+      description={
+        deleteTarget
+          ? `"${deleteTarget.documentType.name}" will be removed from this form. Tip: use the on/off switch to just hide it instead.`
+          : undefined
+      }
+      destructive
+      confirmLabel="Delete"
+      loading={deleteDoc.isPending}
+      onConfirm={() => deleteTarget && deleteDoc.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
+    />
+    </>
   );
 }

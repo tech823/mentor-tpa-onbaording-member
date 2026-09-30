@@ -3,7 +3,7 @@ import { updateSubmissionStatusSchema, idParamSchema } from "@mentor/shared";
 import { validate } from "../../middleware/validate";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { listSubmissionsQuerySchema } from "./submissions.validators";
-import { listController, getController, updateStatusController } from "./submissions.controller";
+import { listController, getController, updateStatusController, deleteController } from "./submissions.controller";
 
 const router = Router();
 router.use(requireAuth);
@@ -15,6 +15,12 @@ router.put(
   requireRole("SUPER_ADMIN", "ADMIN"),
   validate({ params: idParamSchema, body: updateSubmissionStatusSchema }),
   updateStatusController
+);
+router.delete(
+  "/:id",
+  requireRole("SUPER_ADMIN", "ADMIN"),
+  validate({ params: idParamSchema }),
+  deleteController
 );
 
 export default router;

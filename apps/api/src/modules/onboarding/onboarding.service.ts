@@ -9,6 +9,12 @@ import {
 } from "../notifications/email.service";
 import * as repo from "./onboarding.repository";
 import { standardizeValue } from "./standardization";
+import {
+  CHILD_RELATIONSHIPS,
+  SPOUSE_RELATIONSHIPS,
+  SPOUSE_DOC_CODES,
+  CHILD_PROOF_DOC_CODES,
+} from "@mentor/shared";
 import type {
   Language,
   SaveMemberInput,
@@ -287,24 +293,47 @@ export async function submit(sessionToken: string) {
     }
   });
 
-  // Required documents
+  // --- Required documents (verification flow) ---
+  // Member: required member documents (CNIC front/back, photo…).
   for (const d of documents) {
-    if (!d.isRequired) continue;
-    if (d.subjectType === "MEMBER") {
-      const has = state.documents.some((doc) => doc.documentTypeId === d.documentTypeId && doc.subjectType === "MEMBER");
-      if (!has) (errors[`doc.${d.documentType.code}`] ??= []).push(`${d.documentType.name} is required`);
-    } else {
-      state.familyMembers.forEach((fam, idx) => {
-        const has = state.documents.some(
-          (doc) => doc.documentTypeId === d.documentTypeId && doc.familyMemberId === fam.id
-        );
-        if (!has)
-          (errors[`family.${idx}.doc.${d.documentType.code}`] ??= []).push(
-            `Family member ${idx + 1}: ${d.documentType.name} is required`
-          );
-      });
-    }
+    if (d.subjectType !== "MEMBER" || !d.isRequired) continue;
+    const has = state.documents.some((doc) => doc.documentTypeId === d.documentTypeId && doc.subjectType === "MEMBER");
+    if (!has) (errors[`doc.${d.documentType.code}`] ??= []).push(`${d.documentType.name} is required`);
   }
+
+  // Family: rules depend on the relationship, and never block a member who has no
+  // dependents of that type.
+  const familyDocs = documents.filter((d) => d.subjectType === "FAMILY_MEMBER");
+  const spouseDocTypeIds = familyDocs
+    .filter((d) => (SPOUSE_DOC_CODES as readonly string[]).includes(d.documentType.code))
+    .map((d) => d.documentTypeId);
+  const childProofDocTypeIds = familyDocs
+    .filter((d) => (CHILD_PROOF_DOC_CODES as readonly string[]).includes(d.documentType.code))
+    .map((d) => d.documentTypeId);
+
+  state.familyMembers.forEach((fam, idx) => {
+    const rel = fam.relationship ?? "";
+    const who = fam.fullName || `Family member ${idx + 1}`;
+    if ((SPOUSE_RELATIONSHIPS as readonly string[]).includes(rel)) {
+      // Spouse → CNIC required.
+      for (const dtid of spouseDocTypeIds) {
+        const has = state.documents.some((doc) => doc.documentTypeId === dtid && doc.familyMemberId === fam.id);
+        if (!has) (errors[`family.${idx}.doc`] ??= []).push(`${who}: CNIC is required`);
+      }
+    } else if ((CHILD_RELATIONSHIPS as readonly string[]).includes(rel)) {
+      // Child → ANY ONE of B-Form / Birth Certificate / FRC.
+      if (childProofDocTypeIds.length) {
+        const hasAny = state.documents.some(
+          (doc) => childProofDocTypeIds.includes(doc.documentTypeId) && doc.familyMemberId === fam.id
+        );
+        if (!hasAny)
+          (errors[`family.${idx}.doc`] ??= []).push(
+            `${who}: please upload any one of B-Form, Birth Certificate or FRC`
+          );
+      }
+    }
+    // Other relationships → no document required (keeps the flow flexible).
+  });
 
   if (Object.keys(errors).length > 0) {
     throw ApiError.badRequest("Please complete all required fields and documents", errors);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link2, Copy, Check, RefreshCw, Loader2, Power } from "lucide-react";
+import { Link2, Copy, Check, Loader2, Power } from "lucide-react";
 import type { Programme } from "@/features/programmes/programmes.api";
 import { useCreateLink, useToggleLink } from "@/features/programmes/programmes.hooks";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,10 @@ export function OnboardingLinkCard({ programme }: { programme: Programme }) {
   const toggleLink = useToggleLink();
   const [copied, setCopied] = useState(false);
 
-  const activeLink = programme.links?.find((l) => l.isActive);
-  const url = activeLink ? `${window.location.origin}/onboarding/${activeLink.token}` : null;
+  // Show the programme's permanent link (active first, else any existing one) so
+  // a deactivated link can simply be re-activated — its token never changes.
+  const link = programme.links?.find((l) => l.isActive) ?? programme.links?.[0];
+  const url = link ? `${window.location.origin}/onboarding/${link.token}` : null;
 
   const copy = async () => {
     if (!url) return;
@@ -32,7 +34,7 @@ export function OnboardingLinkCard({ programme }: { programme: Programme }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {activeLink ? (
+        {link ? (
           <>
             <div className="flex items-center gap-2">
               <code className="flex-1 truncate rounded-md bg-muted px-3 py-2 text-sm">{url}</code>
@@ -41,31 +43,26 @@ export function OnboardingLinkCard({ programme }: { programme: Programme }) {
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={activeLink.isActive ? "success" : "secondary"}>
-                {activeLink.isActive ? "Active" : "Inactive"}
+              <Badge variant={link.isActive ? "success" : "secondary"}>
+                {link.isActive ? "Active" : "Inactive"}
               </Badge>
-              <span className="text-xs text-muted-foreground">/{activeLink.slug}</span>
-              <div className="ms-auto flex gap-2">
+              <span className="text-xs text-muted-foreground">/{link.slug}</span>
+              <div className="ms-auto">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toggleLink.mutate({ linkId: activeLink.id, isActive: !activeLink.isActive })}
+                  onClick={() => toggleLink.mutate({ linkId: link.id, isActive: !link.isActive })}
                   disabled={toggleLink.isPending}
                 >
-                  <Power className="h-3.5 w-3.5" />
-                  {activeLink.isActive ? "Deactivate" : "Activate"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => createLink.mutate({ id: programme.id, input: {} })}
-                  disabled={createLink.isPending}
-                >
-                  {createLink.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Regenerate
+                  {toggleLink.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Power className="h-3.5 w-3.5" />}
+                  {link.isActive ? "Deactivate" : "Activate"}
                 </Button>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              This link is permanent — share it with members. Deactivate to pause enrolment; the same link
+              re-activates later (the URL never changes).
+            </p>
           </>
         ) : (
           <div className="flex flex-col items-start gap-3">

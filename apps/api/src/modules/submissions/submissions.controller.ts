@@ -41,3 +41,13 @@ export const updateStatusController = asyncHandler(async (req: Request, res: Res
   });
   return ok(res, detail);
 });
+
+export const deleteController = asyncHandler(async (req: Request, res: Response) => {
+  await service.deleteSubmission(req.user!, req.params.id!);
+  await recordAudit(req, req.user, {
+    action: "SUBMISSION_DELETED",
+    entityType: "submission",
+    entityId: req.params.id,
+  });
+  return ok(res, { deleted: true });
+});

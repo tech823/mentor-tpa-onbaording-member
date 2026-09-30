@@ -19,6 +19,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import type { FormField } from "@/features/forms/forms.api";
 import { FIELD_TYPE_LABELS } from "@/features/forms/field-utils";
 import { PageHeader } from "@/components/PageHeader";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ export function FormBuilderPage() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingField, setEditingField] = useState<FormField | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FormField | null>(null);
   const [newFieldSubject, setNewFieldSubject] = useState<SubjectType>("MEMBER");
 
   const programme = programmeRes?.data;
@@ -133,13 +135,17 @@ export function FormBuilderPage() {
                         <div className={`min-w-0 flex-1 ${!field.isActive ? "opacity-50" : ""}`}>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium">{field.label}</span>
-                            {field.isRequired && <span className="text-destructive">*</span>}
+                            {field.isRequired && (
+                              <Badge variant="outline" className="border-destructive/40 text-[10px] text-destructive">
+                                required
+                              </Badge>
+                            )}
                             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                               {field.fieldKey}
                             </code>
                             {field.isSystem && (
                               <Badge variant="secondary" className="gap-1 text-[10px]">
-                                <Lock className="h-3 w-3" /> system
+                                <Lock className="h-3 w-3" /> built-in
                               </Badge>
                             )}
                             {!field.isActive && (
@@ -171,13 +177,7 @@ export function FormBuilderPage() {
                             <Button variant="ghost" size="icon" onClick={() => openEdit(field)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                if (confirm(`Delete field "${field.label}"?`)) deleteField.mutate(field.id);
-                              }}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(field)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -215,6 +215,24 @@ export function FormBuilderPage() {
           onOpenChange={setEditorOpen}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="Delete field?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.label}" and its data will be permanently removed. Tip: use the on/off switch to just hide it instead.`
+            : undefined
+        }
+        destructive
+        confirmLabel="Delete"
+        loading={deleteField.isPending}
+        onConfirm={() =>
+          deleteTarget &&
+          deleteField.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
+        }
+      />
     </div>
   );
 }

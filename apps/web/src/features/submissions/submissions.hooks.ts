@@ -32,6 +32,14 @@ export function useUpdateSubmissionStatus(id: string) {
   });
 }
 
+export function useDeleteSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => submissionsApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 export function useVerifyDocument(submissionId: string) {
   const qc = useQueryClient();
   return useMutation({

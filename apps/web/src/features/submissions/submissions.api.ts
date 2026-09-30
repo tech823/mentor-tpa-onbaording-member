@@ -82,6 +82,7 @@ export const submissionsApi = {
   get: (id: string) => api.get<SubmissionDetail>(`/submissions/${id}`),
   updateStatus: (id: string, status: SubmissionStatus, reviewNotes?: string) =>
     api.put<SubmissionDetail>(`/submissions/${id}/status`, { status, reviewNotes }),
+  remove: (id: string) => api.del<{ deleted: boolean }>(`/submissions/${id}`),
   verifyDocument: (docId: string, status: DocumentVerificationStatus, notes?: string) =>
     api.put<DetailDocument>(`/documents/${docId}/verification`, { status, notes }),
   downloadUrl: (docId: string) => `${API_BASE}/documents/${docId}/download`,

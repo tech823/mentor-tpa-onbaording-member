@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Upload, FileCheck2, X, Loader2, AlertCircle } from "lucide-react";
+import { CHILD_RELATIONSHIPS, SPOUSE_RELATIONSHIPS, SPOUSE_DOC_CODES, CHILD_PROOF_DOC_CODES } from "@mentor/shared";
 import type { UploadedDocument, FamilyMemberState } from "@/features/onboarding/onboarding.api";
 import type { ProgrammeDocument } from "@/features/forms/forms.api";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,10 @@ function DocSlot({
 export function DocumentsStep({ documents, familyMembers, uploaded, onUpload, onRemove, onNext, onBack }: Props) {
   const memberDocs = documents.filter((d) => d.subjectType === "MEMBER");
   const familyDocs = documents.filter((d) => d.subjectType === "FAMILY_MEMBER");
+  // Verification flow: a spouse provides a CNIC; a child provides ANY ONE of
+  // B-Form / Birth Certificate / FRC. Other relationships need nothing.
+  const spouseDocs = familyDocs.filter((d) => (SPOUSE_DOC_CODES as readonly string[]).includes(d.documentType.code));
+  const childProofDocs = familyDocs.filter((d) => (CHILD_PROOF_DOC_CODES as readonly string[]).includes(d.documentType.code));
 
   const findUploaded = (docTypeId: string, familyMemberId?: string) =>
     uploaded.find(
@@ -145,12 +150,26 @@ export function DocumentsStep({ documents, familyMembers, uploaded, onUpload, on
         </Card>
       )}
 
-      {familyDocs.length > 0 &&
-        familyMembers.map((fam, i) => (
+      {familyMembers.map((fam, i) => {
+        const rel = fam.relationship ?? "";
+        const isSpouse = (SPOUSE_RELATIONSHIPS as readonly string[]).includes(rel);
+        const isChild = (CHILD_RELATIONSHIPS as readonly string[]).includes(rel);
+        const docs = isSpouse ? spouseDocs : isChild ? childProofDocs : [];
+        if (docs.length === 0) return null; // spouse w/o CNIC doc, or "Other" → nothing to ask
+        const groupDone = isChild && childProofDocs.some((d) => findUploaded(d.documentTypeId, fam.id));
+        return (
           <Card key={fam.id}>
             <CardContent className="space-y-3 pt-6">
               <h3 className="font-semibold">{fam.fullName || `Family member ${i + 1}`} — Documents</h3>
-              {familyDocs.map((d) => (
+              {isChild ? (
+                <p className="text-xs text-muted-foreground">
+                  Upload <strong>any ONE</strong> of the following (B-Form, Birth Certificate, or FRC).
+                  {groupDone && <span className="ms-1 font-medium text-success">✓ Provided</span>}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Please upload the spouse's CNIC.</p>
+              )}
+              {docs.map((d) => (
                 <DocSlot
                   key={d.id}
                   cfg={d}
@@ -162,13 +181,8 @@ export function DocumentsStep({ documents, familyMembers, uploaded, onUpload, on
               ))}
             </CardContent>
           </Card>
-        ))}
-
-      {familyDocs.length > 0 && familyMembers.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          No family members added — family documents will appear here once you add them.
-        </p>
-      )}
+        );
+      })}
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" size="lg" onClick={onBack}>

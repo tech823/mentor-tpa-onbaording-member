@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../../db/index";
-import { submissions, programmes, corporates, familyMembers, uploadedDocuments } from "../../db/schema/index";
+import { submissions, programmes, corporates, familyMembers, uploadedDocuments, onboardingSessions } from "../../db/schema/index";
 import type { SubmissionStatus } from "@mentor/shared";
 
 export interface ListParams {
@@ -135,6 +135,25 @@ export function findMeta(id: string) {
     where: eq(submissions.id, id),
     with: { programme: { columns: { corporateId: true } } },
   });
+}
+
+/** Storage keys of all files attached to a submission (for file cleanup on delete). */
+export async function findStorageKeys(id: string): Promise<string[]> {
+  const rows = await db
+    .select({ storageKey: uploadedDocuments.storageKey })
+    .from(uploadedDocuments)
+    .where(eq(uploadedDocuments.submissionId, id));
+  return rows.map((r) => r.storageKey);
+}
+
+/** Deletes a submission (cascades to field values, family, documents) and its session. */
+export async function deleteSubmission(id: string) {
+  const sub = await db.query.submissions.findFirst({
+    where: eq(submissions.id, id),
+    columns: { sessionId: true },
+  });
+  await db.delete(submissions).where(eq(submissions.id, id));
+  if (sub?.sessionId) await db.delete(onboardingSessions).where(eq(onboardingSessions.id, sub.sessionId));
 }
 
 export async function updateStatus(

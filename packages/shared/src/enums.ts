@@ -26,6 +26,18 @@ export const SUBMISSION_STATUS = [
 ] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUS)[number];
 
+/** Relationships treated as children/dependents. */
+export const CHILD_RELATIONSHIPS = ["SON", "DAUGHTER"] as const;
+/** Relationships treated as a spouse. */
+export const SPOUSE_RELATIONSHIPS = ["HUSBAND", "WIFE"] as const;
+/**
+ * Document verification rules by document-type CODE (spec: client verification flow):
+ *  - a spouse dependent must provide a CNIC
+ *  - a child must provide ANY ONE of: B-Form, Birth Certificate, or FRC
+ */
+export const SPOUSE_DOC_CODES = ["DEPENDENT_CNIC"] as const;
+export const CHILD_PROOF_DOC_CODES = ["B_FORM", "BIRTH_CERTIFICATE", "FRC"] as const;
+
 export const DOCUMENT_VERIFICATION_STATUS = ["PENDING", "VERIFIED", "REJECTED"] as const;
 export type DocumentVerificationStatus = (typeof DOCUMENT_VERIFICATION_STATUS)[number];
 
@@ -90,6 +102,7 @@ export const AUDIT_ACTIONS = [
   "ONBOARDING_LINK_CHANGED",
   "SUBMISSION_VIEWED",
   "SUBMISSION_STATUS_CHANGED",
+  "SUBMISSION_DELETED",
   "DOCUMENT_VERIFIED",
   "DOCUMENT_REJECTED",
   "EXPORT_GENERATED",

@@ -37,6 +37,7 @@ export function OnboardingPage() {
   const [fields, setFields] = useState<FormField[]>([]);
   const [documents, setDocuments] = useState<ProgrammeDocument[]>([]);
   const [saving, setSaving] = useState(false);
+  const [closed, setClosed] = useState(false);
 
   // The wizard step lives in the URL (?step=) so the browser/phone Back button
   // moves ONE step back instead of dropping the member to the first page.
@@ -193,6 +194,24 @@ export function OnboardingPage() {
   }
 
   if (phase === "done") {
+    // Browsers only allow window.close() on script-opened tabs. Try it, and if the
+    // tab stays open, switch to a clean "you may close now" screen for clear feedback.
+    const handleClose = () => {
+      window.open("", "_self");
+      window.close();
+      setClosed(true);
+    };
+
+    if (closed) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+          <CheckCircle2 className="h-14 w-14 text-success" />
+          <h2 className="text-xl font-semibold">Thank you!</h2>
+          <p className="text-muted-foreground">Your submission is complete. You can now close this tab.</p>
+        </div>
+      );
+    }
+
     return (
       <OnboardingLayout lang={lang} onLangChange={setLang} corporateName={config?.programme.corporate.name}>
         <Card>
@@ -203,6 +222,9 @@ export function OnboardingPage() {
               Thank you. Your information for <strong>{config?.programme.name}</strong> has been submitted successfully.
               Our team will review it shortly.
             </p>
+            <Button size="lg" className="mt-2 w-full max-w-xs" onClick={handleClose}>
+              Close
+            </Button>
           </CardContent>
         </Card>
       </OnboardingLayout>

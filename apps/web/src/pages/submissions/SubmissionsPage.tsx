@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Loader2, FileText, Download, Eye } from "lucide-react";
-import { useSubmissions } from "@/features/submissions/submissions.hooks";
-import { submissionsApi, type ListSubmissionsParams } from "@/features/submissions/submissions.api";
+import { Search, Loader2, FileText, Download, Eye, Trash2 } from "lucide-react";
+import { useSubmissions, useDeleteSubmission } from "@/features/submissions/submissions.hooks";
+import { submissionsApi, type ListSubmissionsParams, type SubmissionListRow } from "@/features/submissions/submissions.api";
 import { useCorporates } from "@/features/corporates/corporates.hooks";
 import { useAuth } from "@/features/auth/useAuth";
 import { PageHeader } from "@/components/PageHeader";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubmissionStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,9 @@ import { formatDate } from "@/lib/utils";
 export function SubmissionsPage() {
   const { hasRole } = useAuth();
   const canExport = hasRole("SUPER_ADMIN", "ADMIN");
+  const canManage = canExport;
+  const deleteSubmission = useDeleteSubmission();
+  const [deleteTarget, setDeleteTarget] = useState<SubmissionListRow | null>(null);
   const [search, setSearch] = useState("");
   const [bucket, setBucket] = useState(""); // "" | in_process | review | accepted | rejected
   const [corporateId, setCorporateId] = useState("");
@@ -121,7 +125,7 @@ export function SubmissionsPage() {
               <TableHead>Documents</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Submitted</TableHead>
-              <TableHead className="text-end">View</TableHead>
+              <TableHead className="text-end">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -168,11 +172,18 @@ export function SubmissionsPage() {
                   {s.submittedAt ? formatDate(s.submittedAt) : <span className="text-xs italic opacity-60">Not submitted</span>}
                 </TableCell>
                 <TableCell className="text-end">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/submissions/${s.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button asChild variant="ghost" size="sm" title="View">
+                      <Link to={`/submissions/${s.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    {canManage && (
+                      <Button variant="ghost" size="sm" title="Delete" onClick={() => setDeleteTarget(s)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -196,6 +207,24 @@ export function SubmissionsPage() {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="Delete submission?"
+        description={
+          deleteTarget
+            ? `${deleteTarget.memberName || "This submission"} and all its data, family members and uploaded documents will be permanently deleted. This cannot be undone.`
+            : undefined
+        }
+        destructive
+        confirmLabel="Delete"
+        loading={deleteSubmission.isPending}
+        onConfirm={() =>
+          deleteTarget &&
+          deleteSubmission.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
+        }
+      />
     </div>
   );
 }
