@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Users as UsersIcon, Plus, UserPlus, Pencil } from "lucide-react";
+import { Loader2, Users as UsersIcon, Plus, UserPlus, Pencil, KeyRound, Copy, Check } from "lucide-react";
 import { ROLES, createUserSchema, updateUserSchema, type CreateUserInput, type UpdateUserInput } from "@mentor/shared";
 import { api, ApiRequestError } from "@/lib/api";
 import { useCorporates } from "@/features/corporates/corporates.hooks";
@@ -38,6 +38,7 @@ export function UsersPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
+  const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
   const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => api.get<UserRow[]>("/users") });
   const rows = data?.data ?? [];
 
@@ -99,9 +100,14 @@ export function UsersPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</TableCell>
                 <TableCell className="text-end">
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(u)} title="Edit role & access">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setResetTarget(u)} title="Reset password">
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(u)} title="Edit role & access">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -111,7 +117,109 @@ export function UsersPage() {
 
       <NewUserDialog open={open} onOpenChange={setOpen} />
       <EditUserDialog user={editing} onClose={() => setEditing(null)} />
+      <ResetPasswordDialog user={resetTarget} onClose={() => setResetTarget(null)} />
     </div>
+  );
+}
+
+function ResetPasswordDialog({ user, onClose }: { user: UserRow | null; onClose: () => void }) {
+  const [password, setPassword] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setPassword("");
+      setDone(false);
+      setErr(null);
+      setCopied(false);
+    }
+  }, [user]);
+
+  const generate = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%";
+    const arr = new Uint32Array(14);
+    crypto.getRandomValues(arr);
+    setPassword(Array.from(arr, (n) => chars[n % chars.length]).join(""));
+  };
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const reset = useMutation({
+    mutationFn: () => api.put(`/users/${user!.id}/password`, { password }),
+    onSuccess: () => setDone(true),
+  });
+
+  const submit = async () => {
+    setErr(null);
+    if (password.length < 8) {
+      setErr("Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      await reset.mutateAsync();
+    } catch (e) {
+      setErr(e instanceof ApiRequestError ? e.message : "Something went wrong");
+    }
+  };
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-primary" /> Reset password
+          </DialogTitle>
+          <DialogDescription>
+            Set a new password for {user?.fullName} ({user?.email}). No email is sent — share it with the user yourself.
+          </DialogDescription>
+        </DialogHeader>
+        {done ? (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+              Password updated. Share this with the user:
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-md bg-muted px-3 py-2 font-mono text-sm">{password}</code>
+              <Button variant="outline" size="icon" onClick={copy} title="Copy">
+                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={onClose}>Done</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>New password</Label>
+              <div className="flex gap-2">
+                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Type or generate" />
+                <Button type="button" variant="outline" onClick={generate}>
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Minimum 8 characters. The user can change it after logging in.</p>
+            </div>
+            {err && <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{err}</div>}
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={submit} disabled={reset.isPending || password.length < 8}>
+                {reset.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Reset password
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

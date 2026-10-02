@@ -13,10 +13,12 @@ import {
   createUserSchema,
   updateUserSchema,
   toggleUserActiveSchema,
+  resetUserPasswordSchema,
   idParamSchema,
   type CreateUserInput,
   type UpdateUserInput,
   type ToggleUserActiveInput,
+  type ResetUserPasswordInput,
 } from "@mentor/shared";
 
 const router = Router();
@@ -108,6 +110,26 @@ router.put(
       metadata: { role: input.role },
     });
     return ok(res, user);
+  })
+);
+
+// Reset password (admin-set, no email) — admin types or auto-generates a new one.
+router.put(
+  "/:id/password",
+  validate({ params: idParamSchema, body: resetUserPasswordSchema }),
+  asyncHandler(async (req, res) => {
+    const { password } = req.body as ResetUserPasswordInput;
+    const target = await db.query.users.findFirst({ where: eq(users.id, req.params.id!) });
+    if (!target) throw ApiError.notFound("User not found");
+    const passwordHash = await hashPassword(password);
+    await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, req.params.id!));
+    await recordAudit(req, req.user, {
+      action: "USER_UPDATED",
+      entityType: "user",
+      entityId: req.params.id,
+      metadata: { passwordReset: true },
+    });
+    return ok(res, { success: true });
   })
 );
 

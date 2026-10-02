@@ -31,3 +31,9 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export const toggleUserActiveSchema = z.object({ isActive: z.boolean() });
 export type ToggleUserActiveInput = z.infer<typeof toggleUserActiveSchema>;
+
+/** Admin-set password reset (no email) — admin types or auto-generates the password. */
+export const resetUserPasswordSchema = z.object({
+  password: z.string().min(8).max(128),
+});
+export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
