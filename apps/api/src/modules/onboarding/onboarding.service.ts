@@ -265,6 +265,14 @@ export async function submit(sessionToken: string) {
   const { submission } = await getSessionContext(sessionToken);
   assertEditable(submission.status);
 
+  // Block duplicate submissions for the same CNIC within this programme.
+  if (submission.cnic?.trim()) {
+    const duplicate = await repo.existsSubmittedCnic(submission.programmeId, submission.cnic.trim(), submission.id);
+    if (duplicate) {
+      throw ApiError.conflict("A form with this CNIC has already been submitted for this programme.");
+    }
+  }
+
   const [fields, documents, state] = await Promise.all([
     repo.getActiveFields(submission.programmeId),
     repo.getActiveDocuments(submission.programmeId),

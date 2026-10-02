@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne, inArray } from "drizzle-orm";
 import { db } from "../../db/index";
 import {
   onboardingLinks,
@@ -53,6 +53,20 @@ export async function createDraftSubmission(input: {
 
 export function findSubmissionBySession(sessionId: string) {
   return db.query.submissions.findFirst({ where: eq(submissions.sessionId, sessionId) });
+}
+
+/** True if another already-submitted form in this programme used the same CNIC. */
+export async function existsSubmittedCnic(programmeId: string, cnic: string, excludeSubmissionId: string) {
+  const row = await db.query.submissions.findFirst({
+    where: and(
+      eq(submissions.programmeId, programmeId),
+      eq(submissions.cnic, cnic),
+      ne(submissions.id, excludeSubmissionId),
+      inArray(submissions.status, ["SUBMITTED", "UNDER_REVIEW", "VERIFIED", "COMPLETED"])
+    ),
+    columns: { id: true },
+  });
+  return !!row;
 }
 
 export function getProgrammeInfo(programmeId: string) {
